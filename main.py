@@ -69,24 +69,24 @@ class MyHTMLParser(HTMLParser):
             self.current_field = None
 
         elif tag == "div" and self.in_listing:
-            listing_nenesi = PhoneListing(
+            listing_nesnesi = PhoneListing(
                 model = self.current_data.get("title"),
                 fiyat = self.current_data.get("price"),
                 şehir = self.current_data.get("city"),
                 durum = self.current_data.get("condition")
             )
 
-        self.listing.append(listing_nenesi)
+        self.listing.append(listing_nesnesi)
         self.in_listing = False
         self.current_data = {}
 
-        def bütce_araligi_üret(başlangic, bitis, artis):
-            while başlangic < bitis:
-                yield f"{baslangic} - {baslangic + artis}"
-                başlangic += artis
+    def bütce_araligi_üret(başlangic, bitis, artis):
+        while başlangic < bitis:
+            yield f"{baslangic} - {baslangic + artis}"
+            başlangic += artis
 
-            for aralik in bütçe_araligi_üret(0, 30000, 10000):
-                print(aralik)
+        for aralik in bütçe_araligi_üret(0, 30000, 10000):
+            print(aralik)
 
 html_içeriği = '''
 <!DOCTYPE html>
@@ -161,64 +161,65 @@ html_içeriği = '''
 </body>
 </html>
 '''      
+def main():
+    soup = BeautifulSoup(html_içeriği, "html.parser")
+    tüm_ilanlar = []
+    fiyat_listesi = []  
+    
+    ilanlar = soup.find_all('div', class_='listing')
+    
+    for ilan in ilanlar:
+        model_etiketi = ilan.find("h2")
+        model = model_etiketi.text.strip() if model_etiketi else "Bilinmiyor"
+    
+        fiyat_etiketi = ilan.find("p", class_="fiyat")
+        if fiyat_etiketi:
+            ham_fiyat = fiyat_etiketi.text.strip()
+            fiyat = ham_fiyat.replace(".", "").replace("TL", "").strip()
+            fiyat_listesi.append(int(fiyat))
+        else:
+            fiyat = "0"
+    
+        sehir_etiketi = ilan.find("p", class_="şehir")
+        şehir = sehir_etiketi.text.strip() if sehir_etiketi else "Belirtilmemiş"
+    
+        durum_etiketi = ilan.find("p", class_="durum")
+        durum = durum_etiketi.text.strip() if durum_etiketi else "Belirtilmemiş"
+    
+        ilan_sozlugu = {
+            "model": model,
+            "price": fiyat,
+            "city": şehir,
+            "condition": durum
+        }
+    
+        tüm_ilanlar.append(ilan_sozlugu)
+    
+    df = pd.DataFrame(tüm_ilanlar)
+    df.to_csv('telefon_ilanlari.csv', index=False, sep=',', encoding='utf-8-sig')
+    print(f"Toplam {len(tüm_ilanlar)} ilan başarıyla 'ilanlar.csv' dosyasına kaydedildi!")
 
-soup = BeautifulSoup(html_içeriği, "html.parser")
-tüm_ilanlar = []
-fiyat_listesi = []  
-
-ilanlar = soup.find_all('div', class_='listing')
-
-for ilan in ilanlar:
-    model_etiketi = ilan.find("h2")
-    model = model_etiketi.text.strip() if model_etiketi else "Bilinmiyor"
-
-    fiyat_etiketi = ilan.find("p", class_="fiyat")
-    if fiyat_etiketi:
-        ham_fiyat = fiyat_etiketi.text.strip()
-        fiyat = ham_fiyat.replace(".", "").replace("TL", "").strip()
-        fiyat_listesi.append(int(fiyat))
+    print("NUMPY ANALİZ SONUÇLARI")
+    if len(fiyat_listesi) > 0:
+        fiyatlar_nd = np.array(fiyat_listesi)
+    
+        ortalama_fiyat = np.mean(fiyatlar_nd)
+        en_düşük_fiyat = np.min(fiyatlar_nd)
+        en_yüksek_fiyat = np.max(fiyatlar_nd)
+        medyan = np.median(fiyatlar_nd)
+        std_sapma = np.std(fiyatlar_nd)
+    
+        x = np.sum(fiyatlar_nd < 20000)
+        y = np.sum(fiyatlar_nd > 30000)
+    
+        print(f"- Ortalama Fiyat: {ortalama_fiyat} TL")
+        print(f"- En Düşük Fiyat: {en_düşük_fiyat} TL")
+        print(f"- En Yüksek Fiyat: {en_yüksek_fiyat} TL")
+        print(f"- Medyan: {medyan} TL")
+        print(f"- Standart Sapma {std_sapma:.2f}")
+        print(f"- 20.000 TL'nin altındaki ilan sayısı: {x}") 
+        print(f"- 30.000 TL'nin üstündeki ilan sayısı: {y}") 
     else:
-        fiyat = "0"
-
-    sehir_etiketi = ilan.find("p", class_="şehir")
-    şehir = sehir_etiketi.text.strip() if sehir_etiketi else "Belirtilmemiş"
-
-    durum_etiketi = ilan.find("p", class_="durum")
-    durum = durum_etiketi.text.strip() if durum_etiketi else "Belirtilmemiş"
-
-    ilan_sozlugu = {
-        "model": model,
-        "price": fiyat,
-        "city": şehir,
-        "condition": durum
-    }
-
-    tüm_ilanlar.append(ilan_sozlugu)
-
-df = pd.DataFrame(tüm_ilanlar)
-df.to_csv('telefon_ilanlari.csv', index=False, sep=',', encoding='utf-8-sig')
-
-print(f"Toplam {len(tüm_ilanlar)} ilan başarıyla 'ilanlar.csv' dosyasına kaydedildi!")
-
-print("NUMPY ANALİZ SONUÇLARI")
-if len(fiyat_listesi) > 0:
-    fiyatlar_nd = np.array(fiyat_listesi)
-
-    ortalama_fiyat = np.mean(fiyatlar_nd)
-    en_düşük_fiyat = np.min(fiyatlar_nd)
-    en_yüksek_fiyat = np.max(fiyatlar_nd)
-    medyan = np.median(fiyatlar_nd)
-    std_sapma = np.std(fiyatlar_nd)
-
-    x = np.sum(fiyatlar_nd < 20000)
-    y = np.sum(fiyatlar_nd > 30000)
-
-    print(f"- Ortalama Fiyat: {ortalama_fiyat} TL")
-    print(f"- En Düşük Fiyat: {en_düşük_fiyat} TL")
-    print(f"- En Yüksek Fiyat: {en_yüksek_fiyat} TL")
-    print(f"- Medyan: {medyan} TL")
-    print(f"- Standart Sapma {std_sapma:.2f}")
-    print(f"- 20.000 TL'nin altındaki ilan sayısı: {x}") 
-    print(f"- 30.000 TL'nin üstündeki ilan sayısı: {y}") 
-else:
-    print("Hata: Veri listesi boş!")
+        print("Hata: Veri listesi boş!")
+if __name__ == "__main__":
+    main()
